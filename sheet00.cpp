@@ -51,7 +51,9 @@ float  interpolate(float value, float leftMin, float leftMax, float rightMin, fl
 
     float valueScaled = (value - leftMin) / (leftSpan);
 
-    return rightMin + (valueScaled * rightSpan);
+    float value_to_return= rightMin + (valueScaled * rightSpan);
+    // std::cout << "value to return" << value_to_return << std::endl;
+    return value_to_return;
 }
 
 
@@ -67,7 +69,7 @@ matrix_type  intersect_saw  (int freq, int num_wraps, float val, int num_points,
 
   std::vector<float> points(num_points);
   int middle_point=int (floor (num_points/2));
-  float  first_dist= c * (2.0*M_PI) /(4.0*M_PI*freq*1000000.0);
+  float  first_dist= c * (2.0*M_PI) /(4.0*M_PI*freq*1000000.0) ;
 
   //  std::cout << "freq " << freq << " has mid point " << middle_point << " fist dist " << first_dist << std::endl;
 
@@ -94,51 +96,34 @@ matrix_type  intersect_saw  (int freq, int num_wraps, float val, int num_points,
   //first intersections
 
 
+  // std::cout << "freq is" << freq << std::endl;
+  // std::cout << "freq has first dist" << first_dist << std::endl;
+  // std::cout << "val is" << val << std::endl;
   for (size_t i = 0; i < num_points; i++) {
-    intersects[0][i]=interpolate(points[i], 0.0 ,2.0*M_PI,0.0,first_dist);
+    // intersects[0][i]=interpolate(points[i], 0.0 ,2.0*M_PI,0.0,first_dist);
+
+    //previous intersect i think it's bad becaue phase0 should be mapped to the max dist
+    intersects[0][i]=interpolate(points[i], 0.0 ,2.0*M_PI,first_dist, 0.0);
+
+    // std::cout << "first intersect is" << intersects[0][i] << std::endl;
+
+    // std::cout << "phase" << points[i] << "has dist" << intersects[0][i] << std::endl;
   }
+
+
 
   for (size_t i = 1; i < num_wraps; i++) {
     for (size_t col = 0; col < num_points; col++) {
       intersects[i][col]=intersects[0][col] + first_dist*i;
+      // std::cout << "next intersect"  <<intersects[i][col] << std::endl;
     }
   }
+
+  // std::cout << std::endl << std::endl << std::endl;
 
 
   return intersects;
 }
-
-
-
-//takes an image od floats and normalizes it to 0.0 - 1.0 for visualization
-void show_img (Mat img){
-  Mat copy;
-  img.copyTo(copy);
-  double min;
-  double max;
-  cv::minMaxIdx(img, &min, &max);
-
-  cv::Mat adjMap;
-
-  for (size_t i = 0; i < rows_ir; i++) {
-     for (size_t j = 0; j < cols_ir; j++) {
-       copy.at<float>(i,j)= interpolate (copy.at<float>(i,j), min, max, 0.0, 1.0);
-     }
-   }
-
-  cv::imshow("Out",copy);
-  waitKey(0); //wait infinite time for a keypress
-
-}
-
-void show_img_array (std::vector<Mat> imgs){
-
-  for (size_t i = 0; i < imgs.size(); i++) {
-    show_img(imgs[i]);
-  }
-
-}
-
 
 
 string type2str(int type) {
@@ -164,6 +149,41 @@ string type2str(int type) {
   return r;
 }
 
+
+//takes an image od floats and normalizes it to 0.0 - 1.0 for visualization
+void show_img (Mat img){
+  Mat copy;
+  img.copyTo(copy);
+  double min;
+  double max;
+  cv::minMaxIdx(img, &min, &max);
+  std::cout << "showimg minmax is" << min << " " << max << std::endl;
+
+  cv::Mat adjMap;
+
+  for (size_t i = 0; i < copy.rows; i++) {
+     for (size_t j = 0; j < copy.cols; j++) {
+       copy.at<float>(i,j)= interpolate (copy.at<float>(i,j), min, max, 0.0, 1.0);
+     }
+   }
+
+  cv::imshow("Out",copy);
+  waitKey(0); //wait infinite time for a keypress
+
+}
+
+void show_img_array (std::vector<Mat> imgs){
+
+  for (size_t i = 0; i < imgs.size(); i++) {
+    show_img(imgs[i]);
+  }
+
+}
+
+
+
+
+
 Mat read_file (std::string filename, bool should_interpolate, int clip, int max){
 
 
@@ -185,7 +205,7 @@ Mat read_file (std::string filename, bool should_interpolate, int clip, int max)
         string s;
         if (!getline( ss, s, ',' )) break;
         record.push_back( s );
-        // std::cout <<  "val is" << atoi(s) << std::endl;
+        //  std::cout <<  "val is" << atoi(s) << std::endl;
     }
 
     data.push_back( record );
@@ -198,6 +218,8 @@ Mat read_file (std::string filename, bool should_interpolate, int clip, int max)
   for (size_t i = 0; i < rows_ir; i++) {
      for (size_t j = 0; j < cols_ir; j++) {
          float val= atoi (data[i][j]);
+
+          // std::cout << "val before is" << val << std::endl;
 
 
          //if clip is set we will crop up until that value and then interpolate from that range
@@ -214,10 +236,10 @@ Mat read_file (std::string filename, bool should_interpolate, int clip, int max)
            }
 
          }
-        //  std::cout << "val is" << val << std::endl;
-
+          // std::cout << "val is" << val << std::endl;
+          // std::cout << "adding at i and j: " << i << " " << j << " value: " << val << std::endl;
          image.at<float>(i,j)=  val;
-      //    std::cout << "added" << image.at<int32_t>(i,j) << std::endl;
+        //  std::cout << "added" << image.at<int32_t>(i,j) << std::endl;
      }
    }
 
@@ -286,33 +308,36 @@ int main(int argc, char* argv[])
       //
 
 
-      //Read the irpic images
+      //READ IRPC IMAGES
+//-------------------------------------------------------------------------------------------
       for (size_t i = 0; i < 9; i++) {
-          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/ir_";
+          // std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/ir_";
+          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/wall_data/ir_";
           std::string index = std::to_string(i);
           std::string sufix= ".out";
 
           std::string filename= prefix + index + sufix;
 
           std::cout << "reading " << filename << std::endl;
-          irpic[i]=read_file(filename,false,450, 32767);  //clip should only used for visualization (value of 500 is retty good)
+          irpic[i]=read_file(filename,false,500, 32767);  //clip should only used for visualization (value of 500 is retty good)
       }
 
+      std::cout << "applying bilateral filter" << std::endl;
 
       //bilateral filter the raw voltages
-      for (size_t i = 0; i < 9; i++) {
-        irpic[i].convertTo(irpic[i],CV_32FC1);
-        Mat dest;
-        bilateralFilter ( irpic[i], dest, 7, 40, 10 );
-        irpic[i]=dest;
-
-      }
-      // show_img_array(irpic);
-
+      // for (size_t i = 0; i < 9; i++) {
+      //   irpic[i].convertTo(irpic[i],CV_32FC1);
+      //   Mat dest;
+      //   bilateralFilter ( irpic[i], dest, 7, 40, 10 );
+      //   irpic[i]=dest;
+      // }
+      show_img_array(irpic);
 
 
 
-      //Read proc tables
+
+      //READ PROC TABLES
+//------------------------------------------------------------------------------------------------------
       std::vector <Mat> p0_tables;
       p0_tables.resize(3);
       for (size_t i = 0; i < 3; i++) {
@@ -326,7 +351,6 @@ int main(int argc, char* argv[])
           p0_tables[i]=read_file(filename,false,0,65535);  //clip should only used for visualization (value of 500 is retty good)
       }
 
-      // show_img_array(p0_tables);
 
 
       //preprocess p0 tables
@@ -337,49 +361,46 @@ int main(int argc, char* argv[])
            }
          }
        }
+      //  show_img_array(p0_tables);
+       std::cout << "finished reading raw images" << std::endl;
+       // std::cout << "images are type" <<  type2str( irpic[0].type() ) << std::endl;
 
-
-
-
-      std::cout << "finished reading raw images" << std::endl;
-
-      std::cout << "images are type" <<  type2str( irpic[0].type() ) << std::endl;
-
+       //PHASES
+//--------------------------------------------------------------------------------------------
       std::vector<Mat> phases;
       for (size_t i = 0; i < 3; i++) {
           Mat image = Mat::zeros(rows_ir,cols_ir, CV_32F);
           phases.push_back(image);
       }
-
       std::cout << "calculating phasses" << std::endl;
 
-      Mat phase_255 = Mat::zeros(rows_ir,cols_ir, CV_8UC1);
 
-      //PHASES
-      float max=-100.0;
-      float min=10000.0;
-      for (size_t phase_id = 0; phase_id < 3; phase_id++) {
+      for (size_t freq_id = 0; freq_id < 3; freq_id++) {
         for (size_t i = 0; i < rows_ir; i++) {
            for (size_t j = 0; j < cols_ir; j++) {
-               float voltage_1= irpic[phase_id*3 +0].at<float>(i,j);
-               float voltage_2= irpic[phase_id*3 +1].at<float>(i,j);
-               float voltage_3= irpic[phase_id*3 +2].at<float>(i,j);
 
-              //  float p0_phase_0 = p0_tables[0].at<float>(i,j);
-              //  float p0_phase_1 = p0_tables[1].at<float>(i,j);
-              //  float p0_phase_2 = p0_tables[2].at<float>(i,j);
+             //loop through the 3 phases and get the voltages
+              std::vector<float> volt_touple(3);
+              for (size_t phase_id = 0; phase_id < 3; phase_id++) {
+                volt_touple[phase_id]=irpic[freq_id*3 + phase_id].at<float>(i,j);
+              }
 
-               float p0_phase_0 = 0;
-               float p0_phase_1 = 0;
-               float p0_phase_2 = 0;
+               //get the 3 values of p0
+               std::vector<float> p0_touple(3);
+               for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
+                //  p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
+                 p0_touple[p0_idx]=0.0;
+               }
 
 
-               float term_sin= - voltage_1 * sin(p0_phase_0 + 0)
-                                - voltage_2 * sin(p0_phase_1 + 2*M_PI/3)
-                                - voltage_3 * sin(p0_phase_2 + 4*M_PI/3);
-               float term_cos=   voltage_1 * cos(p0_phase_0 + 0)
-                                + voltage_2 * cos(p0_phase_1+ 2*M_PI/3)
-                                + voltage_3 * cos(p0_phase_2 + 4*M_PI/3);
+               float term_sin= - volt_touple[0] * sin(p0_touple[0] + 0)
+                                - volt_touple[1] * sin(p0_touple[1] + 2*M_PI/3)
+                                - volt_touple[2] * sin(p0_touple[2] + 4*M_PI/3);
+               float term_cos=   volt_touple[0] * cos(p0_touple[0] + 0)
+                                + volt_touple[1] * cos(p0_touple[1]+ 2*M_PI/3)
+                                + volt_touple[2] * cos(p0_touple[2] + 4*M_PI/3);
+
+
 
 
                float phase_val =atan2 (term_sin, term_cos);
@@ -388,7 +409,7 @@ int main(int argc, char* argv[])
 
               phase_val = phase_val < 0 ? phase_val + M_PI * 2.0f : phase_val;
 
-              phases[phase_id].at<float>(i,j)=phase_val ;  //we add pi so that the range is from 0 to 2*pi
+              phases[freq_id].at<float>(i,j)=phase_val ;  //we add pi so that the range is from 0 to 2*pi
 
            }
          }
@@ -404,22 +425,147 @@ int main(int argc, char* argv[])
       // std::cout << "min is " <<  min_v << std::endl;
       // std::cout << "max is " <<  max_v << std::endl;
 
+
+      //PHASES WITH EXP
+//----------------------------------------------------------------------------------------------------
+      Mat phase_exp = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      for (size_t phase_id = 0; phase_id < 3; phase_id++) {
+        for (size_t i = 0; i < rows_ir; i++) {
+           for (size_t j = 0; j < cols_ir; j++) {
+             dcomp sum=0.0;
+
+             dcomp imaginary;
+             imaginary = -1;
+             imaginary = sqrt(imaginary);
+
+             for (int  n = 0; n < 3; n++) {
+               sum+=double (irpic[phase_id*3+n].at<float>(i,j)) * exp (-imaginary*(  2*M_PI* n/3 ));
+             }
+
+             float phase_val=-arg(sum);
+             phase_val = phase_val < 0 ? phase_val + M_PI * 2.0f : phase_val;
+             phase_exp.at<float>(i,j)=phase_val;
+
+           }
+         }
+
+        //  phases[phase_id]=phase_exp;
+        //  phase_exp.copyTo(phases[phase_id]);
+
+      }
+
+      //  show_img(phase_exp);
+
+      // show_img_array(phases);
+      // std::cout << "showitn gnew pahses" << std::endl;
+
+
+
       //AMPLITUDES
+//----------------------------------------------------------------------------------------------------------
       std::vector<Mat> amplitudes;
       for (size_t i = 0; i < 3; i++) {
           Mat image = Mat::zeros(rows_ir,cols_ir, CV_32F);
           amplitudes.push_back(image);
       }
-
-
       //NOT DONE YET
 
 
 
 
 
+//--------------------------------------------------------------------------------------------------------
+      //ESTIMATION OF BOX FUNCTION
+      // cv::Rect roi(306, 160, 95, 1);   //topleft corner x and y   , width and heigh    //box120
+      cv::Rect roi(378, 160, 84, 1);
+      // cv::Mat image_roi = image(roi)
+      //
+      //
+      Mat phase_2_copy;
+      phases[0].copyTo(phase_2_copy);
+      cv::rectangle(phase_2_copy, roi, cv::Scalar(7, 0, 0), 1);
+      show_img(phase_2_copy);
+
+
+      Mat sub_image= phases[0](roi);
+      std::cout << "sub_image is type" <<  type2str( sub_image.type() ) << std::endl;
+      std::cout << "sub_image is rows, cols" <<  sub_image.rows << " " << sub_image.cols << std::endl;
+      // cv::imshow("wat",sub_image);
+      // waitKey(0); //wait infinite time for a keypress
+      show_img(sub_image);
+
+      // std::vector<float> box;
+      // for (size_t i = 0; i < sub_image.rows; i++) {
+      //    for (size_t j = 0; j < sub_image.cols; j++) {
+      //      std::cout << "box_val is" << sub_image.at<float>(i,j) << std::endl;
+      //      box.push_back(sub_image.at<float>(i,j));
+      //    }
+      //  }
+      // ofstream myfile("box_80.txt");
+      // int vsize = box.size();
+      // for (int n=0; n<vsize; n++)
+      // {
+      //     myfile << box[n] << endl;
+      // }
+
+
+
+
+
+
+      //PRECOMPUTE HYPOTHESIS
+//--------------------------------------------------------------------------------------------------
+      matrix_type precompute_hypothesis;
+      precompute_hypothesis.push_back(std::vector<float>({0,0,0}) );
+      precompute_hypothesis.push_back(std::vector<float>({0,0,1}) );
+      precompute_hypothesis.push_back(std::vector<float>({1,0,1}) );
+      precompute_hypothesis.push_back(std::vector<float>({1,0,2}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({2,0,2}) );
+      precompute_hypothesis.push_back(std::vector<float>({2,0,3}) );
+      precompute_hypothesis.push_back(std::vector<float>({2,0,4}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({3,0,4}) );
+      precompute_hypothesis.push_back(std::vector<float>({3,0,5}) );
+      precompute_hypothesis.push_back(std::vector<float>({3,0,6}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({4,0,5}) );
+      precompute_hypothesis.push_back(std::vector<float>({4,0,6}) );
+      precompute_hypothesis.push_back(std::vector<float>({4,0,7}) );
+      precompute_hypothesis.push_back(std::vector<float>({4,1,5}) );
+      precompute_hypothesis.push_back(std::vector<float>({4,1,6}) );
+      precompute_hypothesis.push_back(std::vector<float>({4,1,7}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({5,0,7}) );
+      precompute_hypothesis.push_back(std::vector<float>({5,0,8}) );
+      precompute_hypothesis.push_back(std::vector<float>({5,0,9}) );
+      precompute_hypothesis.push_back(std::vector<float>({5,1,7}) );
+      precompute_hypothesis.push_back(std::vector<float>({5,1,8}) );
+      precompute_hypothesis.push_back(std::vector<float>({5,1,9}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({6,1,8}) );
+      precompute_hypothesis.push_back(std::vector<float>({6,1,9}) );
+      precompute_hypothesis.push_back(std::vector<float>({6,1,10}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({7,1,10}) );
+      precompute_hypothesis.push_back(std::vector<float>({7,1,11}) );
+      precompute_hypothesis.push_back(std::vector<float>({7,1,12}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({8,1,11}) );
+      precompute_hypothesis.push_back(std::vector<float>({8,1,12}) );
+      precompute_hypothesis.push_back(std::vector<float>({8,1,13}) );
+
+      precompute_hypothesis.push_back(std::vector<float>({9,1,13}) );
+      precompute_hypothesis.push_back(std::vector<float>({9,1,14}) );
+
+      // for (size_t i = 0; i < 33; i++) {
+      //   std::cout << " value is" << precompute_hypothesis[i][0] << " " << precompute_hypothesis[i][1] << " " <<  precompute_hypothesis[i][2] << std::endl;
+      // }
+      // std::cout << "number of hyptoshes " << precompute_hypothesis.size() << std::endl;
+
 
       //UNWRAPPING USING THE TEXT MINIMZATION
+//----------------------------------------------------------------------------------------------
       std::cout << "begginign unwrapping" << std::endl;
       Mat image_n_0 = Mat::zeros(rows_ir,cols_ir, CV_32F);
       Mat image_n_1 = Mat::zeros(rows_ir,cols_ir, CV_32F);
@@ -427,9 +573,9 @@ int main(int argc, char* argv[])
       for (size_t i = 0; i < rows_ir; i++) {
          for (size_t j = 0; j < cols_ir; j++) {
 
-           float t_0= 3.0*  phases[0].at<float>(i,j);
-           float t_1= 15.0* phases[1].at<float>(i,j);
-           float t_2= 2.0*  phases[2].at<float>(i,j);
+           float t_0= 3.0*  phases[0].at<float>(i,j) / (2*M_PI);
+           float t_1= 15.0* phases[1].at<float>(i,j) / (2*M_PI);
+           float t_2= 2.0*  phases[2].at<float>(i,j) / (2*M_PI);
 
            float sigma_phi_0 = 1.0/80.0;
            float sigma_phi_1 = 1.0/16.0;
@@ -442,14 +588,14 @@ int main(int argc, char* argv[])
            float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
            float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
            float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
+           //
+           float sigma_epsilon_1=  sigma_t_1*sigma_t_1 + sigma_t_0*sigma_t_0;
+           float sigma_epsilon_2=  sigma_t_2*sigma_t_2 + sigma_t_0*sigma_t_0;
+           float sigma_epsilon_3=  sigma_t_2*sigma_t_2 + sigma_t_1*sigma_t_1;
 
-          //  float sigma_epsilon_1=  sigma_t_1*sigma_t_1 + sigma_t_0*sigma_t_0;
-          //  float sigma_epsilon_2=  sigma_t_2*sigma_t_2 + sigma_t_0*sigma_t_0;
-          //  float sigma_epsilon_3=  sigma_t_2*sigma_t_2 + sigma_t_1*sigma_t_1;
-
-           float sigma_epsilon_1=sqrt(1.0/0.7007);
-           float sigma_epsilon_2=sqrt(1.0/366.2946);
-           float sigma_epsilon_3=sqrt(1.0/0.7016);
+          //  float sigma_epsilon_1=sqrt(1.0/0.7007);
+          //  float sigma_epsilon_2=sqrt(1.0/366.2946);
+          //  float sigma_epsilon_3=sqrt(1.0/0.7016);
 
 
           //  float min_cost=1000000000000.0;
@@ -461,11 +607,11 @@ int main(int argc, char* argv[])
 
 
            for (int n_0 = 0; n_0 < 10; n_0++) {
-             for (int n_1 = 0; n_1 < 2; n_1++) {
+             for (int n_1 = 0; n_1 < 1; n_1++) {
                for (int n_2 = 0; n_2 < 15; n_2++) {
-                 float epislon_1 = 3.0*n_0 + 15.0* n_1 - (t_1 + t_0);
-                 float epsilon_2 = 3.0*n_0 + 2.0*n_2   - (t_2 - t_0);
-                 float epsilon_3 = 15.0*n_1 + 2.0*n_2  - (t_2 - t_1);
+                 float epislon_1 = 3.0*n_0 - 15.0* n_1 - (t_1 - t_0);
+                 float epsilon_2 = 3.0*n_0 - 2.0*n_2   - (t_2 - t_0);
+                 float epsilon_3 = 15.0*n_1 - 2.0*n_2  - (t_2 - t_1);
 
                  float cost= pow(epislon_1, 2)/ pow(sigma_epsilon_1,2)+
                               pow(epsilon_2, 2)/ pow(sigma_epsilon_2,2)+
@@ -484,7 +630,36 @@ int main(int argc, char* argv[])
              }
            }
 
-            //  std::cout << "best is " << best_n_0 << " " << best_n_1 << " " << best_n_2 << std::endl;
+
+
+          // for (size_t hyp = 0; hyp < precompute_hypothesis.size(); hyp++) {
+          //   int n_0= precompute_hypothesis[hyp][0];
+          //   int n_1= precompute_hypothesis[hyp][1];
+          //   int n_2= precompute_hypothesis[hyp][2];
+          //
+          //
+          //
+          //     float epislon_1 = 3.0*n_0 - 15.0* n_1 - (t_1 - t_0);
+          //      float epsilon_2 = 3.0*n_0 - 2.0*n_2   - (t_2 - t_0);
+          //      float epsilon_3 = 15.0*n_1 - 2.0*n_2  - (t_2 - t_1);
+          //
+          //      float cost= pow(epislon_1, 2)/ pow(sigma_epsilon_1,2)+
+          //                   pow(epsilon_2, 2)/ pow(sigma_epsilon_2,2)+
+          //                   pow(epsilon_3, 2)/ pow(sigma_epsilon_3,2);
+          //
+          //           // std::cout << "cost is" << cost << std::endl;
+          //
+          //       if (cost < min_cost){
+          //         min_cost=cost;
+          //         best_n_0=n_0;
+          //         best_n_1=n_1;
+          //         best_n_2=n_2;
+          //       }
+          //
+          //
+          // }
+
+              // std::cout << "best is " << best_n_0 << " " << best_n_1 << " " << best_n_2 << std::endl;
 
            image_n_0.at<float>(i,j)=best_n_0;
            image_n_1.at<float>(i,j)=best_n_1;
@@ -493,12 +668,12 @@ int main(int argc, char* argv[])
          }
        }
        std::cout << "finished unwrapping" << std::endl;
-
-
-       show_img(image_n_0);
-       show_img(image_n_1);
-       show_img(image_n_2);
-
+       //
+       //
+      //  show_img(image_n_0);
+      //  show_img(image_n_1);
+      //  show_img(image_n_2);
+      //  //
 
 
        //scale them
@@ -553,27 +728,7 @@ int main(int argc, char* argv[])
 
 
 
-      //phases with exp
-      Mat phase_exp = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      for (size_t i = 0; i < rows_ir; i++) {
-         for (size_t j = 0; j < cols_ir; j++) {
-           dcomp sum=0.0;
 
-           dcomp imaginary;
-           imaginary = -1;
-           imaginary = sqrt(imaginary);
-
-           for (size_t n = 0; n < 3; n++) {
-             sum+=double (irpic[n].at<float>(i,j)) * exp (-imaginary*(  2*M_PI*n/3 ));
-           }
-
-           float phase_val=-arg(sum);
-           phase_exp.at<float>(i,j)=phase_val;
-
-         }
-       }
-
-      //  show_img(phase_exp);
 
 
 
@@ -585,10 +740,11 @@ int main(int argc, char* argv[])
 
 
       //SAWTOOTH METHOD
+//---------------------------------------------------------------------------------------------------------
 
       int num_points=1;
       int num_wraps_freq_1=10;
-      int num_wraps_freq_2=2;
+      int num_wraps_freq_2=21;
       int num_wraps_freq_3=15;
 
       float sigma_80=  0.1;
@@ -640,7 +796,7 @@ int main(int argc, char* argv[])
                         float dif_0=abs(intersections_80[row_80][col_80]-intersections_16[row_16][col_16]);
                         float dif_1=abs(intersections_80[row_80][col_80]-intersections_120[row_120][col_120]);
                         float dif_2=abs(intersections_120[row_120][col_120]-intersections_16[row_16][col_16]);
-                        float dif_final=dif_0+dif_1+dif_2;
+                        float dif_final=(dif_0+dif_1+dif_2)/3;
 
                         if (dif_final < difference){
                           difference=dif_final;
@@ -665,20 +821,29 @@ int main(int argc, char* argv[])
               }
             }
 
+            // std::cout << "n_1" << n_1 << std::endl;
+
             confidence_mat.at<float>(i,j)=difference;
             image_n_0.at<float>(i,j)=n_0;
             image_n_1.at<float>(i,j)=n_1;
             image_n_2.at<float>(i,j)=n_2;
 
+            // std::cout << "best is " << n_0 << " " << n_1 << " " << n_2 << std::endl;
 
          }
        }
 
-
+    //  double min_v;
+    //  double max_v;
+    //  cv::minMaxIdx(confidence_mat, &min_v, &max_v);
+    //  std::cout << "min is " <<  min_v << std::endl;
+    //  std::cout << "max is " <<  max_v << std::endl;
     // show_img(confidence_mat);
-    // show_img(image_n_0);
-    // show_img(image_n_1);
-    // show_img(image_n_2);
+    show_img(image_n_0);
+    show_img(image_n_1);
+    show_img(image_n_2);
+
+
 
 
     //scaled phases
@@ -726,7 +891,7 @@ int main(int argc, char* argv[])
        }
      }
 
-    //  show_img(phase_fused);
+     show_img(phase_fused);
 
     return 0;
 }
