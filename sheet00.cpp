@@ -311,15 +311,16 @@ int main(int argc, char* argv[])
       //READ IRPC IMAGES
 //-------------------------------------------------------------------------------------------
       for (size_t i = 0; i < 9; i++) {
-          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/ir_";
+          // std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/ir_";
           // std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/wall_data_2/ir_";
+          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/my_room/ir_";
           std::string index = std::to_string(i);
           std::string sufix= ".out";
 
           std::string filename= prefix + index + sufix;
 
           std::cout << "reading " << filename << std::endl;
-          irpic[i]=read_file(filename,false,500, 32767);  //clip should only used for visualization (value of 500 is retty good)
+          irpic[i]=read_file(filename,false,0, 32767);  //clip should only used for visualization (value of 500 is retty good)
       }
 
       std::cout << "applying bilateral filter" << std::endl;
@@ -331,7 +332,7 @@ int main(int argc, char* argv[])
         bilateralFilter ( irpic[i], dest, 7, 40, 10 );
         irpic[i]=dest;
       }
-      // show_img_array(irpic);
+      show_img_array(irpic);
 
 
 
@@ -341,7 +342,8 @@ int main(int argc, char* argv[])
       std::vector <Mat> p0_tables;
       p0_tables.resize(3);
       for (size_t i = 0; i < 3; i++) {
-          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/p0_";
+          // std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/p0_";
+          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/my_room/p0_";
           std::string index = std::to_string(i);
           std::string sufix= ".out";
 
@@ -387,20 +389,23 @@ int main(int argc, char* argv[])
 
 
                //get the 3 values of p0
-               std::vector<float> p0_touple(3);
-               for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
-                 p0_tables[p0_idx].at<float>(i,j)=  - p0_tables[p0_idx].at<float>(i,j) * 0.000031 * M_PI;
-                 p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
-                //  p0_touple[p0_idx]=0.0;
-               }
+              //  std::vector<float> p0_touple(3);
+              //  for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
+              //    p0_tables[p0_idx].at<float>(i,j)=  - p0_tables[p0_idx].at<float>(i,j) * 0.000031 * M_PI;
+              //    p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
+              //   //  p0_touple[p0_idx]=0.0;
+              //  }
 
+               float p_0= - p0_tables[freq_id].at<float>(i,j) * 0.000031 * M_PI;
+              //  std::cout << "p0 is" << p_0 << std::endl;
+              // p_0=0.0;
 
-               float term_sin= - volt_touple[0] * sin(p0_touple[0] + 0)
-                                - volt_touple[1] * sin(p0_touple[1] + 2*M_PI/3)
-                                - volt_touple[2] * sin(p0_touple[2] + 4*M_PI/3);
-               float term_cos=   volt_touple[0] * cos(p0_touple[0] + 0)
-                                + volt_touple[1] * cos(p0_touple[1]+ 2*M_PI/3)
-                                + volt_touple[2] * cos(p0_touple[2] + 4*M_PI/3);
+               float term_sin= - volt_touple[0] * sin(p_0 + 0)
+                                - volt_touple[1] * sin(p_0 + 2.0f*M_PI/3.0f)
+                                - volt_touple[2] * sin(p_0 + 4.0f*M_PI/3.0f);
+               float term_cos=   volt_touple[0] * cos(p_0 + 0)
+                                + volt_touple[1] * cos(p_0+ 2.0f*M_PI/3.0f)
+                                + volt_touple[2] * cos(p_0 + 4.0f*M_PI/3.0f);
 
 
 
@@ -410,6 +415,7 @@ int main(int argc, char* argv[])
               //  std::cout << "phase is" << phase << std::endl;
 
               phase_val = phase_val < 0 ? phase_val + M_PI * 2.0f : phase_val;
+              phase_val = (phase_val != phase_val) ? 0 : phase_val;
 
               phases[freq_id].at<float>(i,j)=phase_val ;  //we add pi so that the range is from 0 to 2*pi
 
@@ -471,7 +477,7 @@ int main(int argc, char* argv[])
           std::string filename= prefix + index + sufix;
 
           std::cout << "reading " << filename << std::endl;
-          phases[i]=read_file(filename,false,0,65536);  //clip should only used for visualization (value of 500 is retty good)
+          // phases[i]=read_file(filename,false,0,65536);  //clip should only used for visualization (value of 500 is retty good)
       }
 
       show_img_array(phases);
@@ -799,55 +805,55 @@ int main(int argc, char* argv[])
       //  //
 
 
-      //  //scale them
-      //  Mat phase_0_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      //  for (size_t i = 0; i < rows_ir; i++) {
-      //     for (size_t j = 0; j < cols_ir; j++) {
-      //       phase_0_scaled.at<float>(i,j)= 3* (phases[0].at<float>(i,j) + 2*M_PI*image_n_0.at<float>(i,j)) /  (2 * M_PI);
-      //     }
-      //   }
-      //
-      // Mat phase_1_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      // for (size_t i = 0; i < rows_ir; i++) {
-      //    for (size_t j = 0; j < cols_ir; j++) {
-      //      phase_1_scaled.at<float>(i,j)=  15* ( phases[1].at<float>(i,j) + 2*M_PI*image_n_1.at<float>(i,j) ) / (2 * M_PI);
-      //    }
-      //  }
-      //
-      //  Mat phase_2_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      //  for (size_t i = 0; i < rows_ir; i++) {
-      //     for (size_t j = 0; j < cols_ir; j++) {
-      //       phase_2_scaled.at<float>(i,j)=2 * ( phases[2].at<float>(i,j) + 2*M_PI*image_n_2.at<float>(i,j) ) / (2 * M_PI);
-      //     }
-      //   }
-      //
-      //
-      // Mat phase_fused = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      // for (size_t i = 0; i < rows_ir; i++) {
-      //    for (size_t j = 0; j < cols_ir; j++) {
-      //      float sigma_phi_0 = 1.0/80.0;
-      //      float sigma_phi_1 = 1.0/16.0;
-      //      float sigma_phi_2 = 1.0/120.0;
-      //
-      //      float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
-      //      float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
-      //      float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
-      //
-      //      float sum = phase_0_scaled.at<float>(i,j) / (sigma_t_0) +
-      //                   phase_1_scaled.at<float>(i,j) / (sigma_t_1)+
-      //                   phase_2_scaled.at<float>(i,j) / (sigma_t_2);
-      //
-      //     float normalizer=1 / ( 1/ sigma_t_0 + 1/sigma_t_1 + 1/sigma_t_2);
-      //     phase_fused.at<float>(i,j)= normalizer*sum;
-      //    }
-      //  }
-      //
-      //
-      // // show_img(phase_0_scaled);
-      // // show_img(phase_1_scaled);
-      // // show_img(phase_2_scaled);
-      //
-      // // show_img(phase_fused);
+       //scale them
+       Mat phase_0_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+       for (size_t i = 0; i < rows_ir; i++) {
+          for (size_t j = 0; j < cols_ir; j++) {
+            phase_0_scaled.at<float>(i,j)= 3* (phases[0].at<float>(i,j) + 2*M_PI*image_n_0.at<float>(i,j)) /  (2 * M_PI);
+          }
+        }
+
+      Mat phase_1_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      for (size_t i = 0; i < rows_ir; i++) {
+         for (size_t j = 0; j < cols_ir; j++) {
+           phase_1_scaled.at<float>(i,j)=  15* ( phases[1].at<float>(i,j) + 2*M_PI*image_n_1.at<float>(i,j) ) / (2 * M_PI);
+         }
+       }
+
+       Mat phase_2_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+       for (size_t i = 0; i < rows_ir; i++) {
+          for (size_t j = 0; j < cols_ir; j++) {
+            phase_2_scaled.at<float>(i,j)=2 * ( phases[2].at<float>(i,j) + 2*M_PI*image_n_2.at<float>(i,j) ) / (2 * M_PI);
+          }
+        }
+
+
+      Mat phase_fused = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      for (size_t i = 0; i < rows_ir; i++) {
+         for (size_t j = 0; j < cols_ir; j++) {
+           float sigma_phi_0 = 1.0/80.0;
+           float sigma_phi_1 = 1.0/16.0;
+           float sigma_phi_2 = 1.0/120.0;
+
+           float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
+           float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
+           float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
+
+           float sum = phase_0_scaled.at<float>(i,j) / (sigma_t_0) +
+                        phase_1_scaled.at<float>(i,j) / (sigma_t_1)+
+                        phase_2_scaled.at<float>(i,j) / (sigma_t_2);
+
+          float normalizer=1 / ( 1/ sigma_t_0 + 1/sigma_t_1 + 1/sigma_t_2);
+          phase_fused.at<float>(i,j)= normalizer*sum;
+         }
+       }
+
+
+      // show_img(phase_0_scaled);
+      // show_img(phase_1_scaled);
+      // show_img(phase_2_scaled);
+
+      // show_img(phase_fused);
 
 
 
@@ -870,11 +876,12 @@ int main(int argc, char* argv[])
       int num_wraps_freq_2=2;
       int num_wraps_freq_3=15;
 
-      float sigma_80=  0.1;
+      float sigma_80=  0.05;
       float sigma_16=  0.1;
-      float sigma_120= 0.1;
+      float sigma_120= 0.001;
 
       Mat confidence_mat = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      Mat mean_dist_mat = Mat::zeros(rows_ir,cols_ir, CV_32F);
 
       for (size_t i = 0; i < rows_ir; i++) {
          for (size_t j = 0; j < cols_ir; j++) {
@@ -906,6 +913,7 @@ int main(int argc, char* argv[])
             int n_0=100;
             int n_1=100;
             int n_2=100;
+            float mean_dist=100.0;
 
             // std::cout << "rows, cols for 80 " <<  num_rows_80 << " " << num_cols_80 << std::endl;
 
@@ -916,14 +924,17 @@ int main(int argc, char* argv[])
                   for (size_t col_16 = 0; col_16 < num_cols_16; col_16++) {
                     for (size_t row_120 = 0; row_120 < num_rows_120; row_120++) {
                       for (size_t col_120 = 0; col_120 < num_cols_120; col_120++) {
-                        float dif_0=abs(intersections_80[row_80][col_80]-intersections_16[row_16][col_16]);
-                        float dif_1=abs(intersections_80[row_80][col_80]-intersections_120[row_120][col_120]);
-                        float dif_2=abs(intersections_120[row_120][col_120]-intersections_16[row_16][col_16]);
-                        float dif_final=(dif_0+dif_1+dif_2)/3;
+                        float dif_0=abs(intersections_80[row_80][col_80]-intersections_16[row_16][col_16])
+                                    *(1.0/(1.0/80.0 + 1.0/16.0));
+                        float dif_1=abs(intersections_80[row_80][col_80]-intersections_120[row_120][col_120])
+                                    *(1.0/(1.0/80.0 + 1.0/120.0));
+                        float dif_2=abs(intersections_120[row_120][col_120]-intersections_16[row_16][col_16])
+                                    *(1.0/(1.0/120.0 + 1.0/16.0));
+                        float dif_final=(dif_0+dif_1+dif_2);
 
                         if (dif_final < difference){
                           difference=dif_final;
-                          float mean_dist=(intersections_80[row_80][col_80] +intersections_16[row_16][col_16]+ intersections_120[row_120][col_120])/3;
+                          mean_dist=(intersections_80[row_80][col_80] +intersections_16[row_16][col_16]+ intersections_120[row_120][col_120])/3;
 
                           n_0= floor (intersections_80[row_80][col_80] / (LIGHT * (2*M_PI) /(4*M_PI*80*1000000) ) );
                           n_1= floor (intersections_16[row_16][col_16]/ (LIGHT * (2*M_PI) /(4*M_PI*16*1000000) ) );
@@ -950,6 +961,7 @@ int main(int argc, char* argv[])
             image_n_0.at<float>(i,j)=n_0;
             image_n_1.at<float>(i,j)=n_1;
             image_n_2.at<float>(i,j)=n_2;
+            mean_dist_mat.at<float>(i,j)=mean_dist;
 
             // std::cout << "best is " << n_0 << " " << n_1 << " " << n_2 << std::endl;
 
@@ -961,10 +973,12 @@ int main(int argc, char* argv[])
     //  cv::minMaxIdx(confidence_mat, &min_v, &max_v);
     //  std::cout << "min is " <<  min_v << std::endl;
     //  std::cout << "max is " <<  max_v << std::endl;
-    // show_img(confidence_mat);
+    show_img(confidence_mat);
     show_img(image_n_0);
     show_img(image_n_1);
     show_img(image_n_2);
+    // show_img(mean_dist_mat);
+
 
 
 
@@ -995,7 +1009,7 @@ int main(int argc, char* argv[])
 
     // show_img_array(scaled_phases);
 
-    Mat phase_fused = Mat::zeros(rows_ir,cols_ir, CV_32F);
+
 
     for (size_t i = 0; i < rows_ir; i++) {
        for (size_t j = 0; j < cols_ir; j++) {
@@ -1022,12 +1036,170 @@ int main(int argc, char* argv[])
 
 
 
+     //see how many points are at maximum value, because those are bad
+    //   double min_v;
+    //   double max_v;
+    //   cv::minMaxIdx(phase_fused, &min_v, &max_v);
+    //   std::cout << "min is " <<  min_v << std::endl;
+    //   std::cout << "max is " <<  max_v << std::endl;
+    //   int count_bad=0;
+    //  for (size_t i = 0; i < rows_ir; i++) {
+    //     for (size_t j = 0; j < cols_ir; j++) {
+    //       if (phase_fused.at<float>(i,j)>80.0){
+    //         count_bad++;
+    //       }
+    //     }
+    //   }
+    //   std::cout << "bad pixels are" << count_bad << std::endl;
 
 
-  
+
+      //median blur depending on confidence_mat
+      double min_confidence;
+      double max_confidence;
+      cv::minMaxIdx(confidence_mat, &min_confidence, &max_confidence);
+      std::cout << "min is " <<  min_confidence << std::endl;
+      std::cout << "max is " <<  max_confidence << std::endl;
+      Mat phase_fused_filtered = Mat::zeros(rows_ir,cols_ir, CV_32F);
 
 
 
+
+      for (size_t i = 0; i < rows_ir; i++) {
+         for (size_t j = 0; j < cols_ir; j++) {
+
+
+
+
+
+          //  std::cout << " pixel at " << i << " " << j << " val= " << confidence_mat.at<float>(i,j) << std::endl;
+           if (  (confidence_mat.at<float>(i,j) > 0.0f) &&  ( confidence_mat.at<float>(i,j) <  (max_confidence*(1.0/3.0))) ){
+             //good value
+            //  std::cout << " good value" << std::endl;
+             phase_fused_filtered.at<float>(i,j)= phase_fused.at<float>(i,j);
+
+
+           }else if ( (confidence_mat.at<float>(i,j) > (max_confidence*(1.0/3.0)) ) &&  (confidence_mat.at<float>(i,j) <  (max_confidence*(2.0/3.0)))){
+             //blur a little bit
+            //  std::cout << " blur a little bit" << std::endl;
+
+             int window_size=7;
+             int step_size= window_size/2;
+             std::vector<float> values;
+
+             for (int w_row = -step_size; w_row < step_size; w_row++) {
+               for (int w_col = -step_size; w_col < step_size; w_col++) {
+
+                 int index_row=i+w_row;
+                 int index_col=j+w_col;
+
+                 if (index_row<0 || index_row>rows_ir || index_col<0 || index_col>cols_ir){
+                   values.push_back(0.0f);
+                 }else{
+                   //valid pixel, push back that value
+                   values.push_back (   phase_fused.at<float>(index_row,index_col)  );
+                 }
+
+
+               }
+             }
+
+
+
+
+               std::vector<float> calc(values);
+               size_t n = calc.size() / 2;
+               std::nth_element(calc.begin(), calc.begin()+n, calc.end());
+               double median= calc[n];
+              //  std::cout << "median is:" << median << std::endl;
+               phase_fused_filtered.at<float>(i,j)=median;
+
+
+
+           }else if ( ( confidence_mat.at<float>(i,j) > (max_confidence*(2.0/3.0)))){
+             //blur more
+            //  std::cout << " blur a more" << std::endl;
+
+
+             int window_size=13;
+             int step_size= window_size/2;
+             std::vector<float> values;
+
+            //  std::cout << "step_size is" << step_size << std::endl;
+
+             for (int w_row = -step_size; w_row < step_size; w_row++) {
+               for (int w_col = -step_size; w_col < step_size; w_col++) {
+                //  std::cout << "loop" << std::endl;
+
+                 int index_row=i+w_row;
+                 int index_col=j+w_col;
+
+                 if (index_row<0 || index_row>rows_ir || index_col<0 || index_col>cols_ir){
+                   values.push_back(0.0f);
+                 }else{
+                   //valid pixel, push back that value
+                   values.push_back (   phase_fused.at<float>(index_row,index_col)  );
+                 }
+
+
+               }
+             }
+
+
+            //  std::cout<< "finihed blurring more" << std::endl;
+            //  std::cout << "values has size" << values.size() << std::endl;
+
+               std::vector<float> calc(values);
+               size_t n = calc.size() / 2;
+               std::nth_element(calc.begin(), calc.begin()+n, calc.end());
+               double median= calc[n];
+              //  std::cout << "median is:" << median << std::endl;
+               phase_fused_filtered.at<float>(i,j)=median;
+
+           }
+
+
+
+
+         }
+       }
+       show_img(phase_fused_filtered);
+
+
+
+       //For better visualization interpolat from min to max-> min-median
+       Mat phase_fused_interp = Mat::zeros(rows_ir,cols_ir, CV_32F);
+       std::vector<float> values;
+       for (size_t i = 0; i < rows_ir; i++) {
+          for (size_t j = 0; j < cols_ir; j++) {
+             values.push_back (   phase_fused_filtered.at<float>(i,j)  );
+          }
+        }
+        std::vector<float> calc(values);
+        size_t n = calc.size() / 2;
+        std::nth_element(calc.begin(), calc.begin()+n, calc.end());
+        double median= calc[n];
+
+
+        double min_phase_filtered;
+        double max_phase_filtered;
+        cv::minMaxIdx(confidence_mat, &min_phase_filtered, &max_phase_filtered);
+        std::cout << "min is " <<  min_phase_filtered << std::endl;
+        std::cout << "max is " <<  max_phase_filtered << std::endl;
+        std::cout << "median is " <<  median << std::endl;
+
+
+        for (size_t i = 0; i < rows_ir; i++) {
+           for (size_t j = 0; j < cols_ir; j++) {
+              phase_fused_interp.at<float>(i,j)= std::min (phase_fused_filtered.at<float>(i,j), float(median)*3 );
+           }
+         }
+         show_img(phase_fused_interp);
+
+
+
+
+//TODO p0 table is for each frequncy.  po_0 ->freq_80   p0_1->freq_16
 
     return 0;
 }
