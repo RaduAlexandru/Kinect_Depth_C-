@@ -962,9 +962,9 @@ int main(int argc, char* argv[])
     //  std::cout << "min is " <<  min_v << std::endl;
     //  std::cout << "max is " <<  max_v << std::endl;
     // show_img(confidence_mat);
-    // show_img(image_n_0);
-    // show_img(image_n_1);
-    // show_img(image_n_2);
+    show_img(image_n_0);
+    show_img(image_n_1);
+    show_img(image_n_2);
 
 
 
@@ -987,7 +987,7 @@ int main(int argc, char* argv[])
           if (phase_id==2)
             coeficients=image_n_2;
 
-          scaled_phases[phase_id].at<float>(i,j)= phases[phase_id].at<float>(i,j) +  coeficients.at<float>(i,j);
+          scaled_phases[phase_id].at<float>(i,j)= phases[phase_id].at<float>(i,j) +  coeficients.at<float>(i,j)* 2*M_PI;
         }
       }
     }
@@ -1016,7 +1016,7 @@ int main(int argc, char* argv[])
        }
      }
 
-    //  show_img(phase_fused);
+     show_img(phase_fused);
 
 
 
@@ -1024,56 +1024,7 @@ int main(int argc, char* argv[])
 
 
 
-    //NEW FUSION
-  //   Mat phase_0_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-  //   for (size_t i = 0; i < rows_ir; i++) {
-  //      for (size_t j = 0; j < cols_ir; j++) {
-  //        phase_0_scaled.at<float>(i,j)= 3* (phases[0].at<float>(i,j) + 2*M_PI*image_n_0.at<float>(i,j)) /  (2 * M_PI);
-  //      }
-  //    }
-  //
-  //  Mat phase_1_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-  //  for (size_t i = 0; i < rows_ir; i++) {
-  //     for (size_t j = 0; j < cols_ir; j++) {
-  //       phase_1_scaled.at<float>(i,j)=  15* ( phases[1].at<float>(i,j) + 2*M_PI*image_n_1.at<float>(i,j) ) / (2 * M_PI);
-  //     }
-  //   }
-  //
-  //   Mat phase_2_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-  //   for (size_t i = 0; i < rows_ir; i++) {
-  //      for (size_t j = 0; j < cols_ir; j++) {
-  //        phase_2_scaled.at<float>(i,j)=2 * ( phases[2].at<float>(i,j) + 2*M_PI*image_n_2.at<float>(i,j) ) / (2 * M_PI);
-  //      }
-  //    }
-  //
-  //
-  //
-  //  for (size_t i = 0; i < rows_ir; i++) {
-  //     for (size_t j = 0; j < cols_ir; j++) {
-  //       float sigma_phi_0 = 1.0/80.0;
-  //       float sigma_phi_1 = 1.0/16.0;
-  //       float sigma_phi_2 = 1.0/120.0;
-  //
-  //       float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
-  //       float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
-  //       float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
-  //
-  //       float sum = phase_0_scaled.at<float>(i,j) / (sigma_t_0) +
-  //                    phase_1_scaled.at<float>(i,j) / (sigma_t_1)+
-  //                    phase_2_scaled.at<float>(i,j) / (sigma_t_2);
-  //
-  //      float normalizer=1 / ( 1/ sigma_t_0 + 1/sigma_t_1 + 1/sigma_t_2);
-  //      phase_fused.at<float>(i,j)= normalizer*sum;
-  //     }
-  //   }
-  //
-  //
-  // //  show_img(phase_0_scaled);
-  // //  show_img(phase_1_scaled);
-  // //  show_img(phase_2_scaled);
-  //
-  //  show_img(phase_fused);
-
+  
 
 
 
