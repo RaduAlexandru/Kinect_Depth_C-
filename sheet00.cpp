@@ -103,7 +103,7 @@ matrix_type  intersect_saw  (int freq, int num_wraps, float val, int num_points,
     // intersects[0][i]=interpolate(points[i], 0.0 ,2.0*M_PI,0.0,first_dist);
 
     //previous intersect i think it's bad becaue phase0 should be mapped to the max dist
-    intersects[0][i]=interpolate(points[i], 0.0 ,2.0*M_PI,first_dist, 0.0);
+    intersects[0][i]=interpolate(points[i], 0.0 ,2.0*M_PI, 0.0, first_dist);
 
     // std::cout << "first intersect is" << intersects[0][i] << std::endl;
 
@@ -217,7 +217,7 @@ Mat read_file (std::string filename, bool should_interpolate, int clip, int max)
 
   for (size_t i = 0; i < rows_ir; i++) {
      for (size_t j = 0; j < cols_ir; j++) {
-         float val= atoi (data[i][j]);
+         float val= stof (data[i][j]);
 
           // std::cout << "val before is" << val << std::endl;
 
@@ -311,8 +311,8 @@ int main(int argc, char* argv[])
       //READ IRPC IMAGES
 //-------------------------------------------------------------------------------------------
       for (size_t i = 0; i < 9; i++) {
-          // std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/ir_";
-          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/wall_data/ir_";
+          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/ir_";
+          // std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/wall_data_2/ir_";
           std::string index = std::to_string(i);
           std::string sufix= ".out";
 
@@ -325,13 +325,13 @@ int main(int argc, char* argv[])
       std::cout << "applying bilateral filter" << std::endl;
 
       //bilateral filter the raw voltages
-      // for (size_t i = 0; i < 9; i++) {
-      //   irpic[i].convertTo(irpic[i],CV_32FC1);
-      //   Mat dest;
-      //   bilateralFilter ( irpic[i], dest, 7, 40, 10 );
-      //   irpic[i]=dest;
-      // }
-      show_img_array(irpic);
+      for (size_t i = 0; i < 9; i++) {
+        irpic[i].convertTo(irpic[i],CV_32FC1);
+        Mat dest;
+        bilateralFilter ( irpic[i], dest, 7, 40, 10 );
+        irpic[i]=dest;
+      }
+      // show_img_array(irpic);
 
 
 
@@ -341,25 +341,25 @@ int main(int argc, char* argv[])
       std::vector <Mat> p0_tables;
       p0_tables.resize(3);
       for (size_t i = 0; i < 3; i++) {
-          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/p0_table_";
+          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/p0_";
           std::string index = std::to_string(i);
           std::string sufix= ".out";
 
           std::string filename= prefix + index + sufix;
 
           std::cout << "reading " << filename << std::endl;
-          p0_tables[i]=read_file(filename,false,0,65535);  //clip should only used for visualization (value of 500 is retty good)
+          p0_tables[i]=read_file(filename,false,0,65536);  //clip should only used for visualization (value of 500 is retty good)
       }
 
 
 
       //preprocess p0 tables
       for (size_t table = 0; table < 3; table++) {
-        for (size_t i = 0; i < rows_ir; i++) {
-           for (size_t j = 0; j < cols_ir; j++) {
-              p0_tables[table].at<float>(i,j)=  p0_tables[table].at<float>(i,j) * -0.000031 * M_PI;
-           }
-         }
+        // for (size_t i = 0; i < rows_ir; i++) {
+        //    for (size_t j = 0; j < cols_ir; j++) {
+        //       p0_tables[table].at<float>(i,j)=  - p0_tables[table].at<float>(i,j) * 0.000031 * M_PI;
+        //    }
+        //  }
        }
       //  show_img_array(p0_tables);
        std::cout << "finished reading raw images" << std::endl;
@@ -385,11 +385,13 @@ int main(int argc, char* argv[])
                 volt_touple[phase_id]=irpic[freq_id*3 + phase_id].at<float>(i,j);
               }
 
+
                //get the 3 values of p0
                std::vector<float> p0_touple(3);
                for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
-                //  p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
-                 p0_touple[p0_idx]=0.0;
+                 p0_tables[p0_idx].at<float>(i,j)=  - p0_tables[p0_idx].at<float>(i,j) * 0.000031 * M_PI;
+                 p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
+                //  p0_touple[p0_idx]=0.0;
                }
 
 
@@ -417,7 +419,7 @@ int main(int argc, char* argv[])
 
       }
 
-      show_img_array(phases);
+      // show_img_array(phases);
 
       // double min_v;
       // double max_v;
@@ -459,6 +461,21 @@ int main(int argc, char* argv[])
       // show_img_array(phases);
       // std::cout << "showitn gnew pahses" << std::endl;
 
+      //PHASES FROM libfreenect2
+//----------------------------------------------------------------------------------------------------------
+      for (size_t i = 0; i < 3; i++) {
+          std::string prefix = "/media/alex/Nuevo_vol/Master/2nd Semester/Computacional_Photography/Project/Code/libfreenect2-/build-qt/bin/Frames/phases_libfreenect2/phase_";
+          std::string index = std::to_string(i);
+          std::string sufix= ".out";
+
+          std::string filename= prefix + index + sufix;
+
+          std::cout << "reading " << filename << std::endl;
+          phases[i]=read_file(filename,false,0,65536);  //clip should only used for visualization (value of 500 is retty good)
+      }
+
+      show_img_array(phases);
+
 
 
       //AMPLITUDES
@@ -468,14 +485,120 @@ int main(int argc, char* argv[])
           Mat image = Mat::zeros(rows_ir,cols_ir, CV_32F);
           amplitudes.push_back(image);
       }
-      //NOT DONE YET
+
+
+
+      for (size_t freq_id = 0; freq_id < 3; freq_id++) {
+        for (size_t i = 0; i < rows_ir; i++) {
+          for (size_t j = 0; j < cols_ir; j++) {
+
+            //loop through the 3 phases and get the voltages
+             std::vector<float> volt_touple(3);
+             for (size_t phase_id = 0; phase_id < 3; phase_id++) {
+               volt_touple[phase_id]=irpic[freq_id*3 + phase_id].at<float>(i,j);
+             }
+
+             std::vector<float> p0_touple(3);
+             for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
+               p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
+              //  p0_touple[p0_idx]=0.0;
+             }
+
+
+              float term_sin= - volt_touple[0] * sin(p0_touple[0] + 0)
+                              - volt_touple[1] * sin(p0_touple[1] + 2*M_PI/3)
+                              - volt_touple[2] * sin(p0_touple[2] + 4*M_PI/3);
+              float term_cos=   volt_touple[0] * cos(p0_touple[0] + 0)
+                               + volt_touple[1] * cos(p0_touple[1]+ 2*M_PI/3)
+                               + volt_touple[2] * cos(p0_touple[2] + 4*M_PI/3);
+
+              amplitudes[freq_id].at<float>(i,j)=  pow(term_sin,2) + pow(term_cos,2);
+              // amplitudes[freq_id].at<float>(i,j)=  term_sin + term_cos;
+              // amplitudes[freq_id].at<float>(i,j)=  sqrt (pow(term_sin,2) + pow(term_cos,2)) /2;
 
 
 
 
 
-//--------------------------------------------------------------------------------------------------------
+
+
+
+
+              //again using the code in libfreenect2
+              float p0 = -((float) p0_tables[freq_id].at<float>(i,j))* 0.000031 * M_PI;
+              // std::cout << "p0 is" << p0 << std::endl;
+              // p0=0.0f;
+
+               float tmp0 = p0 + 0.0f;;
+               float tmp1 = p0 + 2.094395f;
+               float tmp2 = p0 + 4.18879f;
+
+               float cos_tmp0 = std::cos(tmp0);
+               float cos_tmp1 = std::cos(tmp1);
+               float cos_tmp2 = std::cos(tmp2);
+
+               float sin_negtmp0 = std::sin(-tmp0);
+               float sin_negtmp1 = std::sin(-tmp1);
+               float sin_negtmp2 = std::sin(-tmp2);
+               //
+              //  std::cout << "cos_tmp0= " << cos_tmp0 << std::endl;
+              //  std::cout << "cos_tmp1= " << cos_tmp1 << std::endl;
+              //  std::cout << "cos_tmp2= " << cos_tmp2 << std::endl;
+              //  std::cout << "sin_negtmp0= " << sin_negtmp0 << std::endl;
+              //  std::cout << "sin_negtmp1= " << sin_negtmp1 << std::endl;
+              //  std::cout << "sin_negtmp2= " << sin_negtmp2 << std::endl << std::endl;
+
+
+              //  std::cout << "tmp2 is " << tmp2 << std::endl;
+              //  std::cout << "3= " << cos_tmp2 << std::endl;
+
+               float ir_image_a = cos_tmp0 * volt_touple[0] + cos_tmp1 * volt_touple[1] + cos_tmp2 * volt_touple[2];
+               float ir_image_b = sin_negtmp0 * volt_touple[0] + sin_negtmp1 * volt_touple[1] + sin_negtmp2 * volt_touple[2];
+
+               float abMultiplierPerFrq;
+              //  float ab_multiplier= 0.6666667f;
+              float ab_multiplier= 1.0f;
+               if (freq_id==0)
+                  abMultiplierPerFrq=1.322581f;
+               if (freq_id==1)
+                  abMultiplierPerFrq=1.0f;
+               if (freq_id==2)
+                  abMultiplierPerFrq=1.612903f;
+
+               ir_image_a *= abMultiplierPerFrq;
+               ir_image_b *= abMultiplierPerFrq;
+
+               float ir_amplitude = std::sqrt(ir_image_a * ir_image_a + ir_image_b * ir_image_b) * ab_multiplier;
+
+              //  std::cout << "prev value is" << amplitudes[freq_id].at<float>(i,j) << " next one is " << ir_amplitude << std::endl;
+
+               amplitudes[freq_id].at<float>(i,j)=ir_amplitude;
+
+
+          }
+        }
+      }
+
+
+      // show_img_array(amplitudes);
+
+      Mat amplitude_final = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      for (size_t i = 0; i < rows_ir; i++) {
+        for (size_t j = 0; j < cols_ir; j++) {
+          amplitude_final.at<float>(i,j)=  sqrt (amplitudes[0].at<float>(i,j) )
+                                         + sqrt (amplitudes[1].at<float>(i,j) )
+                                         + sqrt (amplitudes[2].at<float>(i,j) );
+
+
+
+        }
+      }
+
+
+      // show_img(amplitude_final);
+
       //ESTIMATION OF BOX FUNCTION
+//--------------------------------------------------------------------------------------------------------
       // cv::Rect roi(306, 160, 95, 1);   //topleft corner x and y   , width and heigh    //box120
       cv::Rect roi(378, 160, 84, 1);
       // cv::Mat image_roi = image(roi)
@@ -484,7 +607,7 @@ int main(int argc, char* argv[])
       Mat phase_2_copy;
       phases[0].copyTo(phase_2_copy);
       cv::rectangle(phase_2_copy, roi, cv::Scalar(7, 0, 0), 1);
-      show_img(phase_2_copy);
+      // show_img(phase_2_copy);
 
 
       Mat sub_image= phases[0](roi);
@@ -492,7 +615,7 @@ int main(int argc, char* argv[])
       std::cout << "sub_image is rows, cols" <<  sub_image.rows << " " << sub_image.cols << std::endl;
       // cv::imshow("wat",sub_image);
       // waitKey(0); //wait infinite time for a keypress
-      show_img(sub_image);
+      // show_img(sub_image);
 
       // std::vector<float> box;
       // for (size_t i = 0; i < sub_image.rows; i++) {
@@ -676,55 +799,55 @@ int main(int argc, char* argv[])
       //  //
 
 
-       //scale them
-       Mat phase_0_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-       for (size_t i = 0; i < rows_ir; i++) {
-          for (size_t j = 0; j < cols_ir; j++) {
-            phase_0_scaled.at<float>(i,j)= 3* (phases[0].at<float>(i,j) + 2*M_PI*image_n_0.at<float>(i,j)) /  (2 * M_PI);
-          }
-        }
-
-      Mat phase_1_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      for (size_t i = 0; i < rows_ir; i++) {
-         for (size_t j = 0; j < cols_ir; j++) {
-           phase_1_scaled.at<float>(i,j)=  15* ( phases[1].at<float>(i,j) + 2*M_PI*image_n_1.at<float>(i,j) ) / (2 * M_PI);
-         }
-       }
-
-       Mat phase_2_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
-       for (size_t i = 0; i < rows_ir; i++) {
-          for (size_t j = 0; j < cols_ir; j++) {
-            phase_2_scaled.at<float>(i,j)=2 * ( phases[2].at<float>(i,j) + 2*M_PI*image_n_2.at<float>(i,j) ) / (2 * M_PI);
-          }
-        }
-
-
-      Mat phase_fused = Mat::zeros(rows_ir,cols_ir, CV_32F);
-      for (size_t i = 0; i < rows_ir; i++) {
-         for (size_t j = 0; j < cols_ir; j++) {
-           float sigma_phi_0 = 1.0/80.0;
-           float sigma_phi_1 = 1.0/16.0;
-           float sigma_phi_2 = 1.0/120.0;
-
-           float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
-           float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
-           float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
-
-           float sum = phase_0_scaled.at<float>(i,j) / (sigma_t_0) +
-                        phase_1_scaled.at<float>(i,j) / (sigma_t_1)+
-                        phase_2_scaled.at<float>(i,j) / (sigma_t_2);
-
-          float normalizer=1 / ( 1/ sigma_t_0 + 1/sigma_t_1 + 1/sigma_t_2);
-          phase_fused.at<float>(i,j)= normalizer*sum;
-         }
-       }
-
-
-      // show_img(phase_0_scaled);
-      // show_img(phase_1_scaled);
-      // show_img(phase_2_scaled);
-
-      // show_img(phase_fused);
+      //  //scale them
+      //  Mat phase_0_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      //  for (size_t i = 0; i < rows_ir; i++) {
+      //     for (size_t j = 0; j < cols_ir; j++) {
+      //       phase_0_scaled.at<float>(i,j)= 3* (phases[0].at<float>(i,j) + 2*M_PI*image_n_0.at<float>(i,j)) /  (2 * M_PI);
+      //     }
+      //   }
+      //
+      // Mat phase_1_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      // for (size_t i = 0; i < rows_ir; i++) {
+      //    for (size_t j = 0; j < cols_ir; j++) {
+      //      phase_1_scaled.at<float>(i,j)=  15* ( phases[1].at<float>(i,j) + 2*M_PI*image_n_1.at<float>(i,j) ) / (2 * M_PI);
+      //    }
+      //  }
+      //
+      //  Mat phase_2_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      //  for (size_t i = 0; i < rows_ir; i++) {
+      //     for (size_t j = 0; j < cols_ir; j++) {
+      //       phase_2_scaled.at<float>(i,j)=2 * ( phases[2].at<float>(i,j) + 2*M_PI*image_n_2.at<float>(i,j) ) / (2 * M_PI);
+      //     }
+      //   }
+      //
+      //
+      // Mat phase_fused = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      // for (size_t i = 0; i < rows_ir; i++) {
+      //    for (size_t j = 0; j < cols_ir; j++) {
+      //      float sigma_phi_0 = 1.0/80.0;
+      //      float sigma_phi_1 = 1.0/16.0;
+      //      float sigma_phi_2 = 1.0/120.0;
+      //
+      //      float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
+      //      float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
+      //      float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
+      //
+      //      float sum = phase_0_scaled.at<float>(i,j) / (sigma_t_0) +
+      //                   phase_1_scaled.at<float>(i,j) / (sigma_t_1)+
+      //                   phase_2_scaled.at<float>(i,j) / (sigma_t_2);
+      //
+      //     float normalizer=1 / ( 1/ sigma_t_0 + 1/sigma_t_1 + 1/sigma_t_2);
+      //     phase_fused.at<float>(i,j)= normalizer*sum;
+      //    }
+      //  }
+      //
+      //
+      // // show_img(phase_0_scaled);
+      // // show_img(phase_1_scaled);
+      // // show_img(phase_2_scaled);
+      //
+      // // show_img(phase_fused);
 
 
 
@@ -744,7 +867,7 @@ int main(int argc, char* argv[])
 
       int num_points=1;
       int num_wraps_freq_1=10;
-      int num_wraps_freq_2=21;
+      int num_wraps_freq_2=2;
       int num_wraps_freq_3=15;
 
       float sigma_80=  0.1;
@@ -839,9 +962,9 @@ int main(int argc, char* argv[])
     //  std::cout << "min is " <<  min_v << std::endl;
     //  std::cout << "max is " <<  max_v << std::endl;
     // show_img(confidence_mat);
-    show_img(image_n_0);
-    show_img(image_n_1);
-    show_img(image_n_2);
+    // show_img(image_n_0);
+    // show_img(image_n_1);
+    // show_img(image_n_2);
 
 
 
@@ -872,6 +995,8 @@ int main(int argc, char* argv[])
 
     // show_img_array(scaled_phases);
 
+    Mat phase_fused = Mat::zeros(rows_ir,cols_ir, CV_32F);
+
     for (size_t i = 0; i < rows_ir; i++) {
        for (size_t j = 0; j < cols_ir; j++) {
          float sigma_phi_0 = 1.0/80.0;
@@ -891,7 +1016,67 @@ int main(int argc, char* argv[])
        }
      }
 
-     show_img(phase_fused);
+    //  show_img(phase_fused);
+
+
+
+
+
+
+
+    //NEW FUSION
+  //   Mat phase_0_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+  //   for (size_t i = 0; i < rows_ir; i++) {
+  //      for (size_t j = 0; j < cols_ir; j++) {
+  //        phase_0_scaled.at<float>(i,j)= 3* (phases[0].at<float>(i,j) + 2*M_PI*image_n_0.at<float>(i,j)) /  (2 * M_PI);
+  //      }
+  //    }
+  //
+  //  Mat phase_1_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+  //  for (size_t i = 0; i < rows_ir; i++) {
+  //     for (size_t j = 0; j < cols_ir; j++) {
+  //       phase_1_scaled.at<float>(i,j)=  15* ( phases[1].at<float>(i,j) + 2*M_PI*image_n_1.at<float>(i,j) ) / (2 * M_PI);
+  //     }
+  //   }
+  //
+  //   Mat phase_2_scaled = Mat::zeros(rows_ir,cols_ir, CV_32F);
+  //   for (size_t i = 0; i < rows_ir; i++) {
+  //      for (size_t j = 0; j < cols_ir; j++) {
+  //        phase_2_scaled.at<float>(i,j)=2 * ( phases[2].at<float>(i,j) + 2*M_PI*image_n_2.at<float>(i,j) ) / (2 * M_PI);
+  //      }
+  //    }
+  //
+  //
+  //
+  //  for (size_t i = 0; i < rows_ir; i++) {
+  //     for (size_t j = 0; j < cols_ir; j++) {
+  //       float sigma_phi_0 = 1.0/80.0;
+  //       float sigma_phi_1 = 1.0/16.0;
+  //       float sigma_phi_2 = 1.0/120.0;
+  //
+  //       float sigma_t_0= 3.0* sigma_phi_0/(2.0*M_PI);
+  //       float sigma_t_1= 15.0*sigma_phi_1/(2.0*M_PI);
+  //       float sigma_t_2= 2.0* sigma_phi_2/(2.0*M_PI);
+  //
+  //       float sum = phase_0_scaled.at<float>(i,j) / (sigma_t_0) +
+  //                    phase_1_scaled.at<float>(i,j) / (sigma_t_1)+
+  //                    phase_2_scaled.at<float>(i,j) / (sigma_t_2);
+  //
+  //      float normalizer=1 / ( 1/ sigma_t_0 + 1/sigma_t_1 + 1/sigma_t_2);
+  //      phase_fused.at<float>(i,j)= normalizer*sum;
+  //     }
+  //   }
+  //
+  //
+  // //  show_img(phase_0_scaled);
+  // //  show_img(phase_1_scaled);
+  // //  show_img(phase_2_scaled);
+  //
+  //  show_img(phase_fused);
+
+
+
+
 
     return 0;
 }
