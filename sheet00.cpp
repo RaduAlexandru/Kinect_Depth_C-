@@ -327,12 +327,41 @@ int main(int argc, char* argv[])
 
       //bilateral filter the raw voltages
       for (size_t i = 0; i < 9; i++) {
-        irpic[i].convertTo(irpic[i],CV_32FC1);
-        Mat dest;
-        bilateralFilter ( irpic[i], dest, 7, 40, 10 );
-        irpic[i]=dest;
+        // irpic[i].convertTo(irpic[i],CV_32FC1);
+        // Mat dest;
+        // // bilateralFilter ( irpic[i], dest, 7, 40, 10 );
+        // bilateralFilter ( irpic[i], dest,3, 100, 10 );
+        // irpic[i]=dest;
+        //
+
       }
-      show_img_array(irpic);
+
+      //USE ONLY TO VISUALIZE THE VOLTAGES. IT FUCKS UP THE PHASES
+      for (size_t ir = 0; ir < 9; ir++) {
+        for (size_t i = 0; i < rows_ir; i++) {
+           for (size_t j = 0; j < cols_ir; j++) {
+            // irpic[ir].at<float>(i,j)= abs(irpic[ir].at<float>(i,j));
+            // irpic[ir].at<float>(i,j)= std::min(irpic[ir].at<float>(i,j),500.0f);
+           }
+         }
+       }
+
+      // show_img_array(irpic);
+
+
+      // //test to see negative pixels
+      // Mat test = Mat::zeros(rows_ir,cols_ir, CV_32F);
+      // for (size_t i = 0; i < rows_ir; i++) {
+      //    for (size_t j = 0; j < cols_ir; j++) {
+      //      if (irpic[2].at<float>(i,j) >0.0){
+      //        test.at<float>(i,j)=1.0;
+      //      }else{
+      //        test.at<float>(i,j)=0.0;
+      //      }
+      //
+      //    }
+      //  }
+      //  show_img(test);
 
 
 
@@ -354,15 +383,6 @@ int main(int argc, char* argv[])
       }
 
 
-
-      //preprocess p0 tables
-      for (size_t table = 0; table < 3; table++) {
-        // for (size_t i = 0; i < rows_ir; i++) {
-        //    for (size_t j = 0; j < cols_ir; j++) {
-        //       p0_tables[table].at<float>(i,j)=  - p0_tables[table].at<float>(i,j) * 0.000031 * M_PI;
-        //    }
-        //  }
-       }
       //  show_img_array(p0_tables);
        std::cout << "finished reading raw images" << std::endl;
        // std::cout << "images are type" <<  type2str( irpic[0].type() ) << std::endl;
@@ -375,6 +395,19 @@ int main(int argc, char* argv[])
           phases.push_back(image);
       }
       std::cout << "calculating phasses" << std::endl;
+
+
+      std::vector<Mat> sins;
+      for (size_t i = 0; i < 3; i++) {
+          Mat image = Mat::zeros(rows_ir,cols_ir, CV_32F);
+          sins.push_back(image);
+      }
+
+      std::vector<Mat> cosins;
+      for (size_t i = 0; i < 3; i++) {
+          Mat image = Mat::zeros(rows_ir,cols_ir, CV_32F);
+          cosins.push_back(image);
+      }
 
 
       for (size_t freq_id = 0; freq_id < 3; freq_id++) {
@@ -408,7 +441,8 @@ int main(int argc, char* argv[])
                                 + volt_touple[2] * cos(p_0 + 4.0f*M_PI/3.0f);
 
 
-
+              sins[freq_id].at<float>(i,j)=term_sin ;
+              cosins[freq_id].at<float>(i,j)=term_cos ;
 
                float phase_val =atan2 (term_sin, term_cos);
 
@@ -426,6 +460,43 @@ int main(int argc, char* argv[])
       }
 
       // show_img_array(phases);
+
+      //Bilateral filter them and rcalculate phases---------------------------------------------------
+      // show_img_array(sins);
+      // show_img_array(cosins);
+
+      for (size_t i = 0; i < 3; i++) {
+        Mat dest;
+        sins[i].convertTo(sins[i],CV_32FC1);
+        // bilateralFilter ( irpic[i], dest, 7, 40, 10 );
+        bilateralFilter ( sins[i], dest,7, 20, 10 );
+        dest.copyTo(sins[i]);
+
+        cosins[i].convertTo(cosins[i],CV_32FC1);
+        bilateralFilter ( cosins[i], dest,7, 20, 10 );
+        dest.copyTo(cosins[i]);
+      }
+
+      // show_img_array(sins);
+      // show_img_array(cosins);
+
+      for (size_t freq_id = 0; freq_id < 3; freq_id++) {
+        for (size_t i = 0; i < rows_ir; i++) {
+           for (size_t j = 0; j < cols_ir; j++) {
+             float phase_val =atan2 (sins[freq_id].at<float>(i,j), cosins[freq_id].at<float>(i,j));
+
+            //  std::cout << "phase is" << phase << std::endl;
+
+            phase_val = phase_val < 0 ? phase_val + M_PI * 2.0f : phase_val;
+            phase_val = (phase_val != phase_val) ? 0 : phase_val;
+
+            phases[freq_id].at<float>(i,j)=phase_val ;
+           }
+         }
+       }
+
+
+
 
       // double min_v;
       // double max_v;
@@ -504,19 +575,21 @@ int main(int argc, char* argv[])
                volt_touple[phase_id]=irpic[freq_id*3 + phase_id].at<float>(i,j);
              }
 
-             std::vector<float> p0_touple(3);
-             for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
-               p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
-              //  p0_touple[p0_idx]=0.0;
-             }
+            //  std::vector<float> p0_touple(3);
+            //  for (size_t p0_idx = 0; p0_idx < 3; p0_idx++) {
+            //    p0_touple[p0_idx]=p0_tables[p0_idx].at<float>(i,j);
+            //   //  p0_touple[p0_idx]=0.0;
+            //  }
+
+             float p_0= - p0_tables[freq_id].at<float>(i,j) * 0.000031 * M_PI;
 
 
-              float term_sin= - volt_touple[0] * sin(p0_touple[0] + 0)
-                              - volt_touple[1] * sin(p0_touple[1] + 2*M_PI/3)
-                              - volt_touple[2] * sin(p0_touple[2] + 4*M_PI/3);
-              float term_cos=   volt_touple[0] * cos(p0_touple[0] + 0)
-                               + volt_touple[1] * cos(p0_touple[1]+ 2*M_PI/3)
-                               + volt_touple[2] * cos(p0_touple[2] + 4*M_PI/3);
+              float term_sin= - volt_touple[0] * sin(p_0 + 0)
+                              - volt_touple[1] * sin(p_0 + 2*M_PI/3)
+                              - volt_touple[2] * sin(p_0 + 4*M_PI/3);
+              float term_cos=   volt_touple[0] * cos(p_0 + 0)
+                               + volt_touple[1] * cos(p_0+ 2*M_PI/3)
+                               + volt_touple[2] * cos(p_0 + 4*M_PI/3);
 
               amplitudes[freq_id].at<float>(i,j)=  pow(term_sin,2) + pow(term_cos,2);
               // amplitudes[freq_id].at<float>(i,j)=  term_sin + term_cos;
@@ -531,54 +604,54 @@ int main(int argc, char* argv[])
 
 
               //again using the code in libfreenect2
-              float p0 = -((float) p0_tables[freq_id].at<float>(i,j))* 0.000031 * M_PI;
-              // std::cout << "p0 is" << p0 << std::endl;
-              // p0=0.0f;
-
-               float tmp0 = p0 + 0.0f;;
-               float tmp1 = p0 + 2.094395f;
-               float tmp2 = p0 + 4.18879f;
-
-               float cos_tmp0 = std::cos(tmp0);
-               float cos_tmp1 = std::cos(tmp1);
-               float cos_tmp2 = std::cos(tmp2);
-
-               float sin_negtmp0 = std::sin(-tmp0);
-               float sin_negtmp1 = std::sin(-tmp1);
-               float sin_negtmp2 = std::sin(-tmp2);
-               //
-              //  std::cout << "cos_tmp0= " << cos_tmp0 << std::endl;
-              //  std::cout << "cos_tmp1= " << cos_tmp1 << std::endl;
-              //  std::cout << "cos_tmp2= " << cos_tmp2 << std::endl;
-              //  std::cout << "sin_negtmp0= " << sin_negtmp0 << std::endl;
-              //  std::cout << "sin_negtmp1= " << sin_negtmp1 << std::endl;
-              //  std::cout << "sin_negtmp2= " << sin_negtmp2 << std::endl << std::endl;
-
-
-              //  std::cout << "tmp2 is " << tmp2 << std::endl;
-              //  std::cout << "3= " << cos_tmp2 << std::endl;
-
-               float ir_image_a = cos_tmp0 * volt_touple[0] + cos_tmp1 * volt_touple[1] + cos_tmp2 * volt_touple[2];
-               float ir_image_b = sin_negtmp0 * volt_touple[0] + sin_negtmp1 * volt_touple[1] + sin_negtmp2 * volt_touple[2];
-
-               float abMultiplierPerFrq;
-              //  float ab_multiplier= 0.6666667f;
-              float ab_multiplier= 1.0f;
-               if (freq_id==0)
-                  abMultiplierPerFrq=1.322581f;
-               if (freq_id==1)
-                  abMultiplierPerFrq=1.0f;
-               if (freq_id==2)
-                  abMultiplierPerFrq=1.612903f;
-
-               ir_image_a *= abMultiplierPerFrq;
-               ir_image_b *= abMultiplierPerFrq;
-
-               float ir_amplitude = std::sqrt(ir_image_a * ir_image_a + ir_image_b * ir_image_b) * ab_multiplier;
-
-              //  std::cout << "prev value is" << amplitudes[freq_id].at<float>(i,j) << " next one is " << ir_amplitude << std::endl;
-
-               amplitudes[freq_id].at<float>(i,j)=ir_amplitude;
+              // float p0 = -((float) p0_tables[freq_id].at<float>(i,j))* 0.000031 * M_PI;
+              // // std::cout << "p0 is" << p0 << std::endl;
+              // // p0=0.0f;
+              //
+              //  float tmp0 = p0 + 0.0f;;
+              //  float tmp1 = p0 + 2.094395f;
+              //  float tmp2 = p0 + 4.18879f;
+              //
+              //  float cos_tmp0 = std::cos(tmp0);
+              //  float cos_tmp1 = std::cos(tmp1);
+              //  float cos_tmp2 = std::cos(tmp2);
+              //
+              //  float sin_negtmp0 = std::sin(-tmp0);
+              //  float sin_negtmp1 = std::sin(-tmp1);
+              //  float sin_negtmp2 = std::sin(-tmp2);
+              //  //
+              // //  std::cout << "cos_tmp0= " << cos_tmp0 << std::endl;
+              // //  std::cout << "cos_tmp1= " << cos_tmp1 << std::endl;
+              // //  std::cout << "cos_tmp2= " << cos_tmp2 << std::endl;
+              // //  std::cout << "sin_negtmp0= " << sin_negtmp0 << std::endl;
+              // //  std::cout << "sin_negtmp1= " << sin_negtmp1 << std::endl;
+              // //  std::cout << "sin_negtmp2= " << sin_negtmp2 << std::endl << std::endl;
+              //
+              //
+              // //  std::cout << "tmp2 is " << tmp2 << std::endl;
+              // //  std::cout << "3= " << cos_tmp2 << std::endl;
+              //
+              //  float ir_image_a = cos_tmp0 * volt_touple[0] + cos_tmp1 * volt_touple[1] + cos_tmp2 * volt_touple[2];
+              //  float ir_image_b = sin_negtmp0 * volt_touple[0] + sin_negtmp1 * volt_touple[1] + sin_negtmp2 * volt_touple[2];
+              //
+              //  float abMultiplierPerFrq;
+              // //  float ab_multiplier= 0.6666667f;
+              // float ab_multiplier= 1.0f;
+              //  if (freq_id==0)
+              //     abMultiplierPerFrq=1.322581f;
+              //  if (freq_id==1)
+              //     abMultiplierPerFrq=1.0f;
+              //  if (freq_id==2)
+              //     abMultiplierPerFrq=1.612903f;
+              //
+              //  ir_image_a *= abMultiplierPerFrq;
+              //  ir_image_b *= abMultiplierPerFrq;
+              //
+              //  float ir_amplitude = std::sqrt(ir_image_a * ir_image_a + ir_image_b * ir_image_b) * ab_multiplier;
+              //
+              // //  std::cout << "prev value is" << amplitudes[freq_id].at<float>(i,j) << " next one is " << ir_amplitude << std::endl;
+              //
+              //  amplitudes[freq_id].at<float>(i,j)=ir_amplitude;
 
 
           }
@@ -601,7 +674,7 @@ int main(int argc, char* argv[])
       }
 
 
-      // show_img(amplitude_final);
+      show_img(amplitude_final);
 
       //ESTIMATION OF BOX FUNCTION
 //--------------------------------------------------------------------------------------------------------
@@ -853,7 +926,7 @@ int main(int argc, char* argv[])
       // show_img(phase_1_scaled);
       // show_img(phase_2_scaled);
 
-      // show_img(phase_fused);
+      show_img(phase_fused);
 
 
 
@@ -877,20 +950,28 @@ int main(int argc, char* argv[])
       int num_wraps_freq_3=15;
 
       float sigma_80=  0.05;
-      float sigma_16=  0.1;
-      float sigma_120= 0.001;
+      float sigma_16=  0.05;
+      float sigma_120= 0.05;
 
       Mat confidence_mat = Mat::zeros(rows_ir,cols_ir, CV_32F);
       Mat mean_dist_mat = Mat::zeros(rows_ir,cols_ir, CV_32F);
 
+      float diagonal= sqrt(  pow(rows_ir/2,2) + pow (cols_ir/2,2) );
+
+      std::cout << "diagonal is "<< diagonal << std::endl;
+
       for (size_t i = 0; i < rows_ir; i++) {
          for (size_t j = 0; j < cols_ir; j++) {
-            // val_80 =phases[row, col, 0]
-            // val_16 =phases[row, col, 1]
-            // val_120=phases[row, col, 2]
-            // intersections_80 = intersect_saw  (80, num_wraps_freq_1, val_80, num_points, sigma_80)
-            // intersections_16 = intersect_saw  (16, num_wraps_freq_2, val_16, num_points, sigma_16)
-            // intersections_120= intersect_saw (120, num_wraps_freq_3, val_120, num_points, sigma_120)
+
+           float dist_center_x= abs(i-rows_ir/2.0);
+           float dist_center_y= abs(j-cols_ir/2.0);
+           float dist_center= sqrt(pow(dist_center_x,2) + pow(dist_center_y,2));
+
+
+           sigma_80= interpolate (dist_center, 0.0,diagonal, 0.0, 0.05 );
+           sigma_16= interpolate (dist_center, 0.0,diagonal, 0.0, 0.00 );
+           sigma_120= interpolate (dist_center, 0.0,diagonal, 0.0, 0.1 );
+
 
             float val_80= phases[0].at<float>(i,j);
             float val_16= phases[1].at<float>(i,j);
@@ -1055,6 +1136,12 @@ int main(int argc, char* argv[])
 
 
       //median blur depending on confidence_mat
+
+      // GaussianBlur( confidence_mat, confidence_mat, Size( 51, 51 ), 0, 0 );
+      GaussianBlur( confidence_mat, confidence_mat, Size( 9, 9 ), 0, 0 );
+      // medianBlur(confidence_mat,confidence_mat,5);
+      show_img(confidence_mat);
+
       double min_confidence;
       double max_confidence;
       cv::minMaxIdx(confidence_mat, &min_confidence, &max_confidence);
@@ -1084,6 +1171,7 @@ int main(int argc, char* argv[])
             //  std::cout << " blur a little bit" << std::endl;
 
              int window_size=7;
+            //  int window_size=5;
              int step_size= window_size/2;
              std::vector<float> values;
 
@@ -1116,12 +1204,14 @@ int main(int argc, char* argv[])
 
 
 
+
            }else if ( ( confidence_mat.at<float>(i,j) > (max_confidence*(2.0/3.0)))){
              //blur more
             //  std::cout << " blur a more" << std::endl;
 
 
              int window_size=13;
+            // int window_size=9;
              int step_size= window_size/2;
              std::vector<float> values;
 
